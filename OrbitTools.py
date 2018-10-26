@@ -1,11 +1,11 @@
 import MathHelpers
 import numpy as np
 
-G = 2.959e-4*(1.15741e-5)**2. #AU^3 / s^2 / Msun
+G = 6.67259e-8 # cm^3 g^-1 s^-2
 
 # Convert heliocentric coordinates and velocities to kepler orbital elements
 def cart2kep(pos, vel, m1, m2):
-    # pos in AU, vel in AU / s
+    # units need to be in CGS
     X, Y, Z = pos
     vx, vy, vz = vel
     
@@ -129,23 +129,23 @@ def kep2cart(a, ecc, inc, Omega, omega, M, mass, m_central):
 # Get orbital parameters for particles in a pynbody snapshot
 # This assumes that the first dark matter particle is the central star
 def orb_params(snap):
-    x2 = snap.d['pos']
+    x2 = snap.d['pos'].in_units('cm')
     com_x = np.sum(x2[:,0]*snap.d['mass'])/np.sum(snap.d['mass'])
     com_y = np.sum(x2[:,1]*snap.d['mass'])/np.sum(snap.d['mass'])
     com_z = np.sum(x2[:,2]*snap.d['mass'])/np.sum(snap.d['mass'])
     xpos = x2[1:][:,0] - com_x
     ypos = x2[1:][:,1] - com_y
     zpos = x2[1:][:,2] - com_z
-    v2 = snap.d['vel'].in_units('au s**-1')
+    v2 = snap.d['vel'].in_units('cm s**-1')
     v_com_x = np.sum(v2[:,0]*snap.d['mass'])/np.sum(snap.d['mass'])
     v_com_y = np.sum(v2[:,1]*snap.d['mass'])/np.sum(snap.d['mass'])
     v_com_z = np.sum(v2[:,2]*snap.d['mass'])/np.sum(snap.d['mass'])
     xvel = v2[1:][:,0] - v_com_x
     yvel = v2[1:][:,1] - v_com_y
     zvel = v2[1:][:,2] - v_com_z
-    m1 = np.max(snap['mass'])
+    m1 = np.max(snap['mass'].in_units('g'))
     planetesimals = snap.d[1:]
-    m2 = planetesimals['mass']
+    m2 = planetesimals['mass'].in_units('g')
 
     a, e, inc, asc_node, omega, M = cart2kepX(xpos, ypos, zpos, xvel, yvel, zvel, m1, m2)
     planetesimals['a'] = a
