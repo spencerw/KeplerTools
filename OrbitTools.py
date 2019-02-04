@@ -1,4 +1,5 @@
 import MathHelpers
+from Units import *
 import numpy as np
 
 G = 6.67259e-8 # cm^3 g^-1 s^-2
@@ -148,7 +149,7 @@ def orb_params(snap):
     m2 = planetesimals['mass'].in_units('g')
 
     a, e, inc, asc_node, omega, M = cart2kepX(xpos, ypos, zpos, xvel, yvel, zvel, m1, m2)
-    planetesimals['a'] = a
+    planetesimals['a'] = a/cmPerAu
     planetesimals['e'] = e
     planetesimals['inc'] = inc
     planetesimals['asc_node'] = asc_node
@@ -182,3 +183,7 @@ def res_width_fo(m, m_c, a, ecc, j2):
     Cr_n = np.fabs(m/m_c*alpha_f_d)
     da_a = np.sqrt(16./3.*Cr_n*ecc)*np.sqrt(1.+1./(27.*j2**2.*ecc**3)*Cr_n)-(2./(9.*j2*ecc)*Cr_n)
     return a*da_a
+
+# Isolation mass (Kokubo + Ida 2002)
+def m_iso(sigma, a, m, b):
+    return 0.16*(b/10)**(1/2)*(sigma/10)**(1/2)*a**2*m**(-1/2)*Mearth
