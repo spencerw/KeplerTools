@@ -6,12 +6,12 @@ G = 6.67259e-8 # cm^3 g^-1 s^-2
 
 # Convert heliocentric coordinates and velocities to kepler orbital elements
 def cart2kep(pos, vel, m1, m2):
-    # units need to be in CGS
     X, Y, Z = pos
     vx, vy, vz = vel
     
     r = np.array([X, Y, Z])
     v = np.array([vx, vy, vz])
+    G = 1
     mu = G*(m1+m2)
     magr = np.sqrt(X**2. + Y**2. + Z**2.)
     magv = np.sqrt(vx**2. + vy**2. + vz**2.)
@@ -56,6 +56,7 @@ def cart2kep(pos, vel, m1, m2):
 
 # Vectorized version
 def cart2kepX(X, Y, Z, vx, vy, vz, m1, m2):
+    G = 1
     mu = G*(m1+m2)
     magr = np.sqrt(X**2. + Y**2. + Z**2.)
     magv = np.sqrt(vx**2. + vy**2. + vz**2.)
@@ -128,28 +129,22 @@ def kep2cart(a, ecc, inc, Omega, omega, M, mass, m_central):
     return pos, vel
 
 # Get orbital parameters for particles in a pynbody snapshot
-# This assumes that the first dark matter particle is the central star
+# This assumes that the first particle is the central star
 def orb_params(snap):
-    x2 = snap.d['pos'].in_units('cm')
-    com_x = np.sum(x2[:,0]*snap.d['mass'])/np.sum(snap.d['mass'])
-    com_y = np.sum(x2[:,1]*snap.d['mass'])/np.sum(snap.d['mass'])
-    com_z = np.sum(x2[:,2]*snap.d['mass'])/np.sum(snap.d['mass'])
-    xpos = x2[1:][:,0] - com_x
-    ypos = x2[1:][:,1] - com_y
-    zpos = x2[1:][:,2] - com_z
-    v2 = snap.d['vel'].in_units('cm s**-1')
-    v_com_x = np.sum(v2[:,0]*snap.d['mass'])/np.sum(snap.d['mass'])
-    v_com_y = np.sum(v2[:,1]*snap.d['mass'])/np.sum(snap.d['mass'])
-    v_com_z = np.sum(v2[:,2]*snap.d['mass'])/np.sum(snap.d['mass'])
-    xvel = v2[1:][:,0] - v_com_x
-    yvel = v2[1:][:,1] - v_com_y
-    zvel = v2[1:][:,2] - v_com_z
-    m1 = np.max(snap['mass'].in_units('g'))
-    planetesimals = snap.d[1:]
-    m2 = planetesimals['mass'].in_units('g')
+    x2 = snap.d['pos']
+    xpos = x2[1:][:,0] - x2[0][0]
+    ypos = x2[1:][:,1] - x2[0][1]
+    zpos = x2[1:][:,2] - x2[0][2]
+    v2 = snap.d['vel']
+    xvel = v2[1:][:,0] - v2[0][0]
+    yvel = v2[1:][:,1] - v2[0][1]
+    zvel = v2[1:][:,2] - v2[0][2]
+    m1 = snap['mass'][0]
+    planetesimals = snap[1:]
+    m2 = planetesimals['mass']
 
     a, e, inc, asc_node, omega, M = cart2kepX(xpos, ypos, zpos, xvel, yvel, zvel, m1, m2)
-    planetesimals['a'] = a/cmPerAu
+    planetesimals['a'] = a
     planetesimals['e'] = e
     planetesimals['inc'] = inc
     planetesimals['asc_node'] = asc_node
