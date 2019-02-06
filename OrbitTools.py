@@ -153,7 +153,47 @@ def orb_params(snap):
     
     return planetesimals
 
-# Functions for computing resonance width (see section 8.7 of Murray and Dermott)
+# Convert kepler orbital elements to poincaire variables
+def kep2poinc(a, e, i, omega, Omega, M , m1, m2):
+    mu = m1 + m2
+    mustar = m1*m2/(m1 + m2)
+
+    lam = M + omega + Omega
+    gam = -omega - Omega
+    z = -Omega
+    Lam = mustar*np.sqrt(mu*a)
+    Gam = mustar*np.sqrt(mu*a)*(1 - np.sqrt(1 - e**2))
+    Z = mustar*np.sqrt(mu*a*np.sqrt(1 - e**2))*(1 - np.cos(i))
+
+    return lam, gam, z, Lam, Gam, Z
+
+# Convert kepler orbital elements to delunay variables
+def kep2poinc(a, e, i, omega, Omega, M , m1, m2):
+    L = np.sqrt((m1 + m2)*a)
+    G = L*np.sqrt(1 - e**2)
+    H = G*np.cos(i)
+    l = M
+    g = omega
+    h = Omega
+
+    return l, g, h, L, G, H
+
+# Convert keplerian orbital elements to modified delunay coordinates
+def kep2mdel(a, e, i, omega, Omega, M, m1, m2):
+    L = np.sqrt((m1 + m2)*a)
+    G = L*np.sqrt(1 - e**2)
+    H = G*np.cos(i)
+    l = M
+    g = omega
+    h = Omega
+
+    Lam = L
+    P = L - G
+    Q = G - H
+    lam = l + g + h
+    p = -g - h
+    q = -h
+    return Lam, P, Q, lam, p, q
 
 from scipy import integrate
 # Laplace coefficient
@@ -171,13 +211,22 @@ def d_lap(j, s, alpha):
 def f_d(j, alpha):
     return (j*lap(j, 0.5, alpha)) + (alpha/2.*d_lap(j, 0.5, alpha))
 
-# Libration width of first order resonance
+# Libration width of first order resonance (Murray + Dermott 8.76)
 def res_width_fo(m, m_c, a, ecc, j2):
     alpha = (j2/(j2+1))**(-2./3.)
     alpha_f_d = alpha*f_d(j2, alpha)
     Cr_n = np.fabs(m/m_c*alpha_f_d)
     da_a = np.sqrt(16./3.*Cr_n*ecc)*np.sqrt(1.+1./(27.*j2**2.*ecc**3)*Cr_n)-(2./(9.*j2*ecc)*Cr_n)
     return a*da_a
+
+# Libration frequency of first order resonance (Murray + Dermott 8.47)
+def res_lib_freq(m, m_c, a, ecc, j2):
+    alpha = (j2/(j2+1))**(-2./3.)
+    alpha_f_d = alpha*f_d(j2, alpha)
+    P = 2*np.pi*np.sqrt(a**3/m_c)
+    n = 2*np.pi/P
+    Crn = n**2*np.fabs(m/m_c*alpha_f_d)
+    return np.sqrt(3*j2**2*Crn*ecc)
 
 # Isolation mass (Kokubo + Ida 2002)
 def m_iso(sigma, a, m, b):
