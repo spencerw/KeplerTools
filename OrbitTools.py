@@ -187,6 +187,17 @@ def kep2mdel(a, e, i, omega, Omega, M, m1, m2):
 
 from scipy import integrate
 # Laplace coefficient
+"""def lap(j, s, alpha):
+    x_vals = np.linspace(0, 2*np.pi)
+    if type(alpha) != float and type(alpha) != int:
+        alpha = alpha.reshape(-1, 1)
+        x_vals = x_vals.reshape(1, -1)
+    def int_func(x):
+        return np.cos(j*x)/(1. - (2.*alpha*np.cos(x)) + alpha**2.)**s
+    integral = integrate.simps(int_func(x_vals))
+    return 1./np.pi*integral"""
+
+# Laplace coefficient
 def lap(j, s, alpha):
     def int_func(x):
         return np.cos(j*x)/(1. - (2.*alpha*np.cos(x)) + alpha**2.)**s
@@ -197,9 +208,17 @@ def lap(j, s, alpha):
 def d_lap(j, s, alpha):
     return s*(lap(j-1, s+1, alpha) - 2.*alpha*lap(j, s+1, alpha) + lap(j+1, s+1, alpha))
 
-# Direct terms of distubring function (Winter + Murray 1998)
+# Direct terms of distubring function (M+D table 8.1)
 def f_d(j, alpha):
-    return (j*lap(j, 0.5, alpha)) + (alpha/2.*d_lap(j, 0.5, alpha))
+    l = lap(j, 0.5, alpha)
+    dl = d_lap(j, 0.5, alpha)
+    return 1/2*(-2*j*l - alpha*dl)
+
+# Direct terms of distubring function for 2nd order interior MMR (M+D table 8.1)
+def f_d2(j, alpha):
+    l = lap(j, 0.5, alpha)
+    dl = d_lap(j, 0.5, alpha)
+    return 1/8*(-5*j*l + 4*j**2*l - 2*alpha*dl + 4*j*alpha*dl + alpha**2*dl**2)
 
 # Secular terms in disturbing function (from table 8.4 in M+D)
 def f_s1(alpha):
@@ -210,16 +229,64 @@ def f_s1(alpha):
     c5 = -1/8*alpha**2*lap(0, 3/2, alpha)
     return c1 + c2 + c3 + c4 + c5
 
+# Constant from resonant part of disturbing function (M+D equation 8.32)
 def C_r(m_pert, m_c, a, j1, j2):
     alpha = (j2/(j2-1))**(2/3)
     P = 2*np.pi*np.sqrt(a**3/m_c)
     n = 2*np.pi/P
     return (m_pert/m_c)*n*alpha*f_d(j1, alpha)
 
-# Equation 13 from Winter and Murray 1998
+# Direct resonance term from M+D equation 8.30
 def curlypidot_d(m, m_c, a, e, j1, j2, j4, phi):
     C_r_val = C_r(m, m_c, a, j1, j2)
     return j4*C_r_val*e**(j4 - 2)*np.cos(phi)
+
+# Secular term from M+D equation 8.30
+def curlypidot_sec(m_pert, m_central, a, alpha):
+    P = 2*np.pi*np.sqrt(a**3/m_central)
+    n = 2*np.pi/P
+    C_s = m_pert/m_central*n*alpha*f_s1(alpha)
+    return 2*C_s
+
+# Libration width of interior first or second order resonance (Murray + Dermott 8.76)
+def res_width(m, m_c, ecc, j1, j2):
+    alpha = (-j2/j1)**(2./3.)
+    if j2 == 1-j1:
+        alpha_f_d = alpha*f_d(j1, alpha)
+    elif j2 == 2-j1:
+        alpha_f_d = alpha*f_d2(j1, alpha)
+    Cr_n = np.fabs(m/m_c*alpha_f_d)
+    if j2 == 1-j1:
+        da_a = np.sqrt(16./3.*Cr_n*ecc)*np.sqrt(1.+1./(27.*j2**2.*ecc**3)*Cr_n)-(2./(9.*j2*ecc)*Cr_n)
+    elif j2 == 2-j1:
+        da_a = np.sqrt(16./3.*Cr_n*ecc)
+    return da_a
+
+# Libration frequency of first order resonance (Murray + Dermott 8.47)
+def res_lib_freq(m, m_c, a, ecc, j1, j2, j4):
+    alpha = (j2/(j2-1))**(2./3.)
+    alpha_f_d = alpha*f_d(j1, alpha)
+    P = 2*np.pi*np.sqrt(a**3/m_c)
+    n = 2*np.pi/P
+    Crn = n**2*np.fabs(m/m_c*alpha_f_d)
+    return np.sqrt(3*j2**2*Crn*ecc**np.fabs(j4))
+
+# Isolation mass in M_earth (Kokubo + Ida 2002)
+def m_iso(sigma, a, m, b):
+    return 0.16*(b/10)**(3/2)*(sigma/10)**(3/2)*a**3*m**(-1/2)
+
+# Typical orbital separation between embryos in mutual hill radii
+# Kokubo + Ida 1998
+# f - inflation factor for collision cross section
+# em - hill eccentricity of planetesimals
+# M - mass of embryos [g]
+# sigma - surface density of planetesimal disk [g cm^-2]
+# a - orbital distance from star [AU]
+def b_typ(f, em, M, sigma, a):
+    if a < 2.7:
+        return 11*f**(-1/5)*(em/5)**(2/5)*(M/1e26)**(2/15)*(sigma/10)**(-1/5)*a**(-1/5)
+    else:
+         return 10*f**(-1/5)*(em/5)**(2/5)*(M/1e26)**(2/15)*(sigma/4)**(-1/5)*(a/5)**(-1/5)
 
 # Libration width of interior first order resonance (Murray + Dermott 8.76)
 def res_width_fo(m, m_c, a, ecc, j1, j2):
@@ -228,16 +295,3 @@ def res_width_fo(m, m_c, a, ecc, j1, j2):
     Cr_n = np.fabs(m/m_c*alpha_f_d)
     da_a = np.sqrt(16./3.*Cr_n*ecc)*np.sqrt(1.+1./(27.*j2**2.*ecc**3)*Cr_n)-(2./(9.*j2*ecc)*Cr_n)
     return a*da_a
-
-# Libration frequency of first order resonance (Murray + Dermott 8.47)
-def res_lib_freq(m, m_c, a, ecc, j1, j2):
-    alpha = (j2/(j2-1))**(2./3.)
-    alpha_f_d = alpha*f_d(j1, alpha)
-    P = 2*np.pi*np.sqrt(a**3/m_c)
-    n = 2*np.pi/P
-    Crn = n**2*np.fabs(m/m_c*alpha_f_d)
-    return np.sqrt(3*j2**2*Crn*ecc)
-
-# Isolation mass in M_earth (Kokubo + Ida 2002)
-def m_iso(sigma, a, m, b):
-    return 0.16*(b/10)**(3/2)*(sigma/10)**(3/2)*a**3*m**(-1/2)
