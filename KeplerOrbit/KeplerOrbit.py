@@ -1,10 +1,41 @@
 import numpy as np
+from scipy import integrate
 from .MathHelpers import cross, dot, nr, PQW
 
-# Convert heliocentric coordinates and velocities to kepler orbital elements
-def cart2kep(pos, vel, m1, m2):
-    X, Y, Z = pos
-    vx, vy, vz = vel
+G = 6.6759e-8 # cgs units
+
+def cart2kep(X, Y, Z, vx, vy, vz, m1, m2):
+    """
+    Convert a single set of cartesian positions and velocities
+    (in heliocentric coordinates) to kepler orbital elements. This
+    function expects CGS units.
+    
+    Parameters
+    ----------
+    X: float
+        X position of body
+    Y: float
+        Y position of body
+    Z: float
+        Z position of body
+    vx: float
+        x velocity of body
+    vy: float
+        y velocity of body
+    vz: float
+        z velocity of body
+    m1: float
+        mass of central body
+    m2: float
+        mass of orbiting body
+    
+    Returns
+    -------
+    float
+        a, e, inc, asc_node, omega, M - Semimajor axis, eccentricity
+        inclination, longitude of ascending node, longitude of 
+        perihelion and mean anomaly of orbiting body
+    """
     
     r = np.array([X, Y, Z])
     v = np.array([vx, vy, vz])
@@ -50,9 +81,41 @@ def cart2kep(pos, vel, m1, m2):
     
     return a, e, inc, asc_node, omega, M
 
-# Vectorized version
 def cart2kepX(X, Y, Z, vx, vy, vz, m1, m2):
-    mu = m1 + m2
+    """
+    Convert an array of cartesian positions and velocities
+    (in heliocentric coordinates) to an array of kepler orbital
+    elements. This function expects CGS units. This function is
+    fully vectorized.
+
+    Parameters
+    ----------
+    X: numpy array of floats
+        X position of body
+    Y: numpy array of floats
+        Y position of body
+    Z: numpy array of floats
+        Z position of body
+    vx: numpy array of floats
+        x velocity of body
+    vy: numpy array of floats
+        y velocity of body
+    vz: numpy array of floats
+        z velocity of body
+    m1: numpy array of floats
+        mass of central body
+    m2: numpy array of floats
+        mass of orbiting body
+
+    Returns
+    -------
+    numpy array of floats
+        a, e, inc, asc_node, omega, M - Semimajor axis, eccentricity
+        inclination, longitude of ascending node, longitude of 
+        perihelion and mean anomaly of orbiting body
+    """
+    
+    mu = G*(m1 + m2)
     magr = np.sqrt(X**2. + Y**2. + Z**2.)
     magv = np.sqrt(vx**2. + vy**2. + vz**2.)
     
@@ -90,8 +153,39 @@ def cart2kepX(X, Y, Z, vx, vy, vz, m1, m2):
     
     return a, e, inc, asc_node % (2*np.pi), omega, M
 
-# Convert kepler orbital elements to heliocentric cartesian coordinates
 def kep2cart(a, ecc, inc, Omega, omega, M, mass, m_central):
+    """
+    Convert a single set of kepler orbital elements into cartesian
+    positions and velocities. This function expects CGS units. Note
+    that because of the Newton-Raphson function, this routine cannot
+    be vectorized.
+
+    Parameters
+    ----------
+    a: float
+        semi-major axis body
+    ecc: float
+        eccentricity of body
+    inc: float
+        inclination of body
+    Omega: float
+        longitude of ascending node of body
+    omega: float
+        longitude of perihelion of body
+    M: float
+        Mean anomaly of body
+    mass: float
+        mass of body
+    m_central: float
+        mass of central body
+
+    Returns
+    -------
+    float
+        pos, vel - Tuples containing the x, y and z positions
+        and velocities of the body
+    """
+
     a = a
     mass = mass
     m_central = m_central
@@ -127,9 +221,25 @@ def kep2cart(a, ecc, inc, Omega, omega, M, mass, m_central):
     
     return pos, vel
 
-# Get orbital parameters for particles in a pynbody snapshot
-# This assumes that the first particle is the central star
 def orb_params(snap):
+    """
+    Takes a Pynbody snapshot of particles and calculates gives them fields
+    corresponding to Kepler orbital elements. Assumes that the central star
+    is particle #0 and that the positions and velocities are in barycentric
+    coordinates.
+
+    Parameters
+    ----------
+    snap: SimArray
+        A snapshot of the particles
+
+    Returns
+    -------
+    SimArray
+        A copy of 'snap' with additional fields 'a', 'ecc', 'inc', 'asc_node',
+        'omega' and 'M' added.
+    """
+
     x = snap.d['pos']
     x_h = x[1:] - x[0]
     v = snap.d['vel']
@@ -143,8 +253,36 @@ def orb_params(snap):
     
     return pl
 
-# Convert kepler orbital elements to poincaire variables
 def kep2poinc(a, e, i, omega, Omega, M , m1, m2):
+    """
+    Convert kepler orbital elements into Poincaire variables.
+    Can accept either single values or lists of coordinates
+
+    Parameters
+    ----------
+    a: float
+        semi-major axis body
+    ecc: float
+        eccentricity of body
+    inc: float
+        inclination of body
+    Omega: float
+        longitude of ascending node of body
+    omega: float
+        longitude of perihelion of body
+    M: float
+        Mean anomaly of body
+    mass: float
+        mass of body
+    m_central: float
+        mass of central body
+
+    Returns
+    -------
+    float
+        lam, gam, z, Lam, Gam, Z - Poincaire coordinates
+    """
+
     mu = m1 + m2
     mustar = m1*m2/(m1 + m2)
 
@@ -157,8 +295,36 @@ def kep2poinc(a, e, i, omega, Omega, M , m1, m2):
 
     return lam, gam, z, Lam, Gam, Z
 
-# Convert kepler orbital elements to delunay variables
-def kep2poinc(a, e, i, omega, Omega, M , m1, m2):
+def kep2del(a, e, i, omega, Omega, M , m1, m2):
+    """
+    Convert kepler orbital elements into Delunay variables.
+    Can accept either single values or lists of coordinates
+
+    Parameters
+    ----------
+    a: float
+        semi-major axis body
+    ecc: float
+        eccentricity of body
+    inc: float
+        inclination of body
+    Omega: float
+        longitude of ascending node of body
+    omega: float
+        longitude of perihelion of body
+    M: float
+        Mean anomaly of body
+    mass: float
+        mass of body
+    m_central: float
+        mass of central body
+
+    Returns
+    -------
+    float
+        l, g, h, L, G, H - Delunay coordinates
+    """
+
     L = np.sqrt((m1 + m2)*a)
     G = L*np.sqrt(1 - e**2)
     H = G*np.cos(i)
@@ -168,8 +334,36 @@ def kep2poinc(a, e, i, omega, Omega, M , m1, m2):
 
     return l, g, h, L, G, H
 
-# Convert keplerian orbital elements to modified delunay coordinates
 def kep2mdel(a, e, i, omega, Omega, M, m1, m2):
+    """
+    Convert kepler orbital elements into modified Delunay variables.
+    Can accept either single values or lists of coordinates
+
+    Parameters
+    ----------
+    a: float
+        semi-major axis body
+    ecc: float
+        eccentricity of body
+    inc: float
+        inclination of body
+    Omega: float
+        longitude of ascending node of body
+    omega: float
+        longitude of perihelion of body
+    M: float
+        Mean anomaly of body
+    mass: float
+        mass of body
+    m_central: float
+        mass of central body
+
+    Returns
+    -------
+    float
+        Lam, P, Q, lam, p, q - Delunay coordinates
+    """
+    
     L = np.sqrt((m1 + m2)*a)
     G = L*np.sqrt(1 - e**2)
     H = G*np.cos(i)
@@ -185,43 +379,31 @@ def kep2mdel(a, e, i, omega, Omega, M, m1, m2):
     q = -h
     return Lam, P, Q, lam, p, q
 
-from scipy import integrate
-# Laplace coefficient
-"""def lap(j, s, alpha):
-    x_vals = np.linspace(0, 2*np.pi)
-    if type(alpha) != float and type(alpha) != int:
-        alpha = alpha.reshape(-1, 1)
-        x_vals = x_vals.reshape(1, -1)
-    def int_func(x):
-        return np.cos(j*x)/(1. - (2.*alpha*np.cos(x)) + alpha**2.)**s
-    integral = integrate.simps(int_func(x_vals))
-    return 1./np.pi*integral"""
-
-# Laplace coefficient
 def lap(j, s, alpha):
+    """ Laplace coefficient """
     def int_func(x):
         return np.cos(j*x)/(1. - (2.*alpha*np.cos(x)) + alpha**2.)**s
     integral = integrate.quad(int_func, 0., 2.*np.pi)[0]
     return 1./np.pi*integral
 
-# First alpha derivative of laplace coefficient
 def d_lap(j, s, alpha):
+    """ First alpha derivative of Laplace coefficient """
     return s*(lap(j-1, s+1, alpha) - 2.*alpha*lap(j, s+1, alpha) + lap(j+1, s+1, alpha))
 
-# Direct terms of distubring function (M+D table 8.1)
 def f_d(j, alpha):
+    """ Direct terms of distubring function (M+D table 8.1) """
     l = lap(j, 0.5, alpha)
     dl = d_lap(j, 0.5, alpha)
     return 1/2*(-2*j*l - alpha*dl)
 
-# Direct terms of distubring function for 2nd order interior MMR (M+D table 8.1)
 def f_d2(j, alpha):
+    """ Direct terms of distubring function for 2nd order interior MMR (M+D table 8.1) """
     l = lap(j, 0.5, alpha)
     dl = d_lap(j, 0.5, alpha)
     return 1/8*(-5*j*l + 4*j**2*l - 2*alpha*dl + 4*j*alpha*dl + alpha**2*dl**2)
 
-# Secular terms in disturbing function (from table 8.4 in M+D)
 def f_s1(alpha):
+    """ Secular terms in disturbing function (from table 8.4 in M+D) """
     c1 = 1/4*alpha*d_lap(0, 1/2, alpha)
     c2 = 1/16*alpha**2*d_lap(1, 3/2, alpha)
     c3 = -1/8*alpha**3*d_lap(0, 3/2, alpha)
@@ -229,27 +411,27 @@ def f_s1(alpha):
     c5 = -1/8*alpha**2*lap(0, 3/2, alpha)
     return c1 + c2 + c3 + c4 + c5
 
-# Constant from resonant part of disturbing function (M+D equation 8.32)
 def C_r(m_pert, m_c, a, j1, j2):
+    """ Constant from resonant part of disturbing function (M+D equation 8.32) """
     alpha = (j2/(j2-1))**(2/3)
     P = 2*np.pi*np.sqrt(a**3/m_c)
     n = 2*np.pi/P
     return (m_pert/m_c)*n*alpha*f_d(j1, alpha)
 
-# Direct resonance term from M+D equation 8.30
 def curlypidot_d(m, m_c, a, e, j1, j2, j4, phi):
+    """ Direct resonance term from M+D equation 8.30 """
     C_r_val = C_r(m, m_c, a, j1, j2)
     return j4*C_r_val*e**(j4 - 2)*np.cos(phi)
 
-# Secular term from M+D equation 8.30
 def curlypidot_sec(m_pert, m_central, a, alpha):
+    """ Secular term from M+D equation 8.30 """
     P = 2*np.pi*np.sqrt(a**3/m_central)
     n = 2*np.pi/P
     C_s = m_pert/m_central*n*alpha*f_s1(alpha)
     return 2*C_s
 
-# Libration width of interior first or second order resonance (Murray + Dermott 8.76)
 def res_width(m, m_c, ecc, j1, j2):
+    """ Libration width of interior first or second order resonance (Murray + Dermott 8.76) """
     alpha = (-j2/j1)**(2./3.)
     if j2 == 1-j1:
         alpha_f_d = alpha*f_d(j1, alpha)
@@ -262,36 +444,11 @@ def res_width(m, m_c, ecc, j1, j2):
         da_a = np.sqrt(16./3.*Cr_n*ecc)
     return da_a
 
-# Libration frequency of first order resonance (Murray + Dermott 8.47)
 def res_lib_freq(m, m_c, a, ecc, j1, j2, j4):
+    """ Libration frequency of first order resonance (Murray + Dermott 8.47) """
     alpha = (j2/(j2-1))**(2./3.)
     alpha_f_d = alpha*f_d(j1, alpha)
     P = 2*np.pi*np.sqrt(a**3/m_c)
     n = 2*np.pi/P
     Crn = n**2*np.fabs(m/m_c*alpha_f_d)
     return np.sqrt(3*j2**2*Crn*ecc**np.fabs(j4))
-
-# Isolation mass in M_earth (Kokubo + Ida 2002)
-def m_iso(sigma, a, m, b):
-    return 0.16*(b/10)**(3/2)*(sigma/10)**(3/2)*a**3*m**(-1/2)
-
-# Typical orbital separation between embryos in mutual hill radii
-# Kokubo + Ida 1998
-# f - inflation factor for collision cross section
-# em - hill eccentricity of planetesimals
-# M - mass of embryos [g]
-# sigma - surface density of planetesimal disk [g cm^-2]
-# a - orbital distance from star [AU]
-def b_typ(f, em, M, sigma, a):
-    if a < 2.7:
-        return 11*f**(-1/5)*(em/5)**(2/5)*(M/1e26)**(2/15)*(sigma/10)**(-1/5)*a**(-1/5)
-    else:
-         return 10*f**(-1/5)*(em/5)**(2/5)*(M/1e26)**(2/15)*(sigma/4)**(-1/5)*(a/5)**(-1/5)
-
-# Libration width of interior first order resonance (Murray + Dermott 8.76)
-def res_width_fo(m, m_c, a, ecc, j1, j2):
-    alpha = (j2/(j2-1))**(2./3.)
-    alpha_f_d = alpha*f_d(j1, alpha)
-    Cr_n = np.fabs(m/m_c*alpha_f_d)
-    da_a = np.sqrt(16./3.*Cr_n*ecc)*np.sqrt(1.+1./(27.*j2**2.*ecc**3)*Cr_n)-(2./(9.*j2*ecc)*Cr_n)
-    return a*da_a
