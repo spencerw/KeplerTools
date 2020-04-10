@@ -1,5 +1,5 @@
-import MathHelpers
 import numpy as np
+from .MathHelpers import cross, dot, nr, PQW
 
 # Convert heliocentric coordinates and velocities to kepler orbital elements
 def cart2kep(pos, vel, m1, m2):
@@ -56,33 +56,33 @@ def cart2kepX(X, Y, Z, vx, vy, vz, m1, m2):
     magr = np.sqrt(X**2. + Y**2. + Z**2.)
     magv = np.sqrt(vx**2. + vy**2. + vz**2.)
     
-    hx, hy, hz = MathHelpers.cross(X, Y, Z, vx, vy, vz)
+    hx, hy, hz = cross(X, Y, Z, vx, vy, vz)
     magh = np.sqrt(hx**2. + hy**2. + hz**2.)
-    tmpx, tmpy, tmpz = MathHelpers.cross(vx, vy, vz, hx, hy, hz)
+    tmpx, tmpy, tmpz = cross(vx, vy, vz, hx, hy, hz)
     evecx = tmpx/mu - X/magr
     evecy = tmpy/mu - Y/magr
     evecz = tmpz/mu - Z/magr
 
     e = np.sqrt(evecx**2. + evecy**2. + evecz**2.)
     
-    a = MathHelpers.dot(hx, hy, hz, hx, hy, hz) / (mu * (1. - e**2.))
+    a = dot(hx, hy, hz, hx, hy, hz) / (mu * (1. - e**2.))
     
     ivec = [1., 0., 0.]
     jvec = [0., 1., 0.]
     kvec = [0., 0., 1.]
     
-    inc = np.arccos(MathHelpers.dot(kvec[0], kvec[1], kvec[2], hx, hy, hz) / magh)
+    inc = np.arccos(dot(kvec[0], kvec[1], kvec[2], hx, hy, hz) / magh)
     
-    nx, ny, nz = MathHelpers.cross(kvec[0], kvec[1], kvec[2], hx, hy, hz)
+    nx, ny, nz = cross(kvec[0], kvec[1], kvec[2], hx, hy, hz)
     nmag = np.sqrt(nx**2. + ny**2. + nz**2.)
-    asc_node = np.where(inc == 0., 0., np.arccos(MathHelpers.dot(ivec[0], ivec[1], ivec[2], nx, ny, nz) / nmag))
-    asc_node[MathHelpers.dot(nx, ny, nz, jvec[0], jvec[1], jvec[2]) < 0.] = 2.*np.pi - asc_node[MathHelpers.dot(nx, ny, nz, jvec[0], jvec[1], jvec[2]) < 0.]
+    asc_node = np.where(inc == 0., 0., np.arccos(dot(ivec[0], ivec[1], ivec[2], nx, ny, nz) / nmag))
+    asc_node[dot(nx, ny, nz, jvec[0], jvec[1], jvec[2]) < 0.] = 2.*np.pi - asc_node[dot(nx, ny, nz, jvec[0], jvec[1], jvec[2]) < 0.]
 
-    omega = np.where(inc == 0., np.arctan2(evecy/e, evecx/e), np.arccos(MathHelpers.dot(nx, ny, nz, evecx, evecy, evecz) / (nmag*e)))
-    omega[MathHelpers.dot(evecx, evecy, evecz, kvec[0], kvec[1], kvec[2]) < 0.] = 2.*np.pi - omega[MathHelpers.dot(evecx, evecy, evecz, kvec[0], kvec[1], kvec[2]) < 0.]
+    omega = np.where(inc == 0., np.arctan2(evecy/e, evecx/e), np.arccos(dot(nx, ny, nz, evecx, evecy, evecz) / (nmag*e)))
+    omega[dot(evecx, evecy, evecz, kvec[0], kvec[1], kvec[2]) < 0.] = 2.*np.pi - omega[dot(evecx, evecy, evecz, kvec[0], kvec[1], kvec[2]) < 0.]
     
-    theta = np.arccos(MathHelpers.dot(evecx, evecy, evecz, X, Y, Z) / (e * magr))
-    theta = np.where(MathHelpers.dot(X, Y, Z, vx, vy, vz) < 0., 2*np.pi - theta, theta)
+    theta = np.arccos(dot(evecx, evecy, evecz, X, Y, Z) / (e * magr))
+    theta = np.where(dot(X, Y, Z, vx, vy, vz) < 0., 2*np.pi - theta, theta)
                      
     E = np.arccos((e + np.cos(theta)) / (1 + e * np.cos(theta)))
     E = np.where(np.logical_and(theta > np.pi, theta < 2*np.pi), 2*np.pi - E, theta)
@@ -100,7 +100,7 @@ def kep2cart(a, ecc, inc, Omega, omega, M, mass, m_central):
         Omega = 0.
     if ecc == 0.:
         omega = 0.
-    E = MathHelpers.nr(M, ecc)
+    E = nr(M, ecc)
     
     X = a * (np.cos(E) - ecc)
     Y = a * np.sqrt(1. - ecc**2.) * np.sin(E)
@@ -110,7 +110,7 @@ def kep2cart(a, ecc, inc, Omega, omega, M, mass, m_central):
     Vx = - a * np.sin(E) * Edot
     Vy = a * np.sqrt(1. - ecc**2.) * Edot * np.cos(E)
     
-    Px, Py, Pz, Qx, Qy, Qz = MathHelpers.PQW(Omega, omega, inc)
+    Px, Py, Pz, Qx, Qy, Qz = PQW(Omega, omega, inc)
 
     # Rotate Positions
     x = X * Px + Y * Qx
