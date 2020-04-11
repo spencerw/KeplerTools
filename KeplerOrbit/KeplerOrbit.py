@@ -4,83 +4,6 @@ from .MathHelpers import cross, dot, nr, PQW
 
 def cart2kep(X, Y, Z, vx, vy, vz, m1, m2):
     """
-    Convert a single set of cartesian positions and velocities
-    (in heliocentric coordinates) to kepler orbital elements. Units
-    are such that G=1.
-    
-    Parameters
-    ----------
-    X: float
-        X position of body
-    Y: float
-        Y position of body
-    Z: float
-        Z position of body
-    vx: float
-        x velocity of body
-    vy: float
-        y velocity of body
-    vz: float
-        z velocity of body
-    m1: float
-        mass of central body
-    m2: float
-        mass of orbiting body
-    
-    Returns
-    -------
-    float
-        a, e, inc, asc_node, omega, M - Semimajor axis, eccentricity
-        inclination, longitude of ascending node, longitude of 
-        perihelion and mean anomaly of orbiting body
-    """
-    
-    r = np.array([X, Y, Z])
-    v = np.array([vx, vy, vz])
-    mu = m1+m2
-    magr = np.sqrt(X**2. + Y**2. + Z**2.)
-    magv = np.sqrt(vx**2. + vy**2. + vz**2.)
-    
-    h = np.cross(r, v)
-    magh = np.sqrt(np.sum(h**2.))
-    evec = 1./mu * np.cross(v, h) - r/magr
-    e = np.sqrt(np.sum(evec**2.))
-    a = np.dot(h, h) / (mu * (1. - e**2.))
-    
-    ivec = [1., 0., 0.]
-    jvec = [0., 1., 0.]
-    kvec = [0., 0., 1.]
-    
-    inc = np.arccos(np.dot(kvec, h) / magh)
-    
-    n = np.cross(kvec, h)
-    if inc == 0.:
-        asc_node = 0.
-    else:
-        nmag = np.sqrt(np.sum(n**2.))
-        asc_node = np.arccos(np.dot(ivec, n) / nmag)
-        if np.dot(n, jvec) < 0:
-            asc_node = 2.*np.pi - asc_node
-
-    if inc == 0.:
-        omega = np.arctan2(evec[1]/e, evec[0]/e)
-    else:
-        omega = np.arccos(np.dot(n, evec) / (nmag*e))
-        if np.dot(evec, kvec) < 0.:
-            omega = 2.*np.pi - omega
-    
-    theta = np.arccos(np.dot(evec, r) / (e * magr))
-    if np.dot(r, v) < 0.:
-        theta = 2.*np.pi - theta
-    E = np.arccos((e + np.cos(theta)) / (1 + e * np.cos(theta)))
-    if theta > np.pi and theta < 2.*np.pi:
-        E = 2.*np.pi - E
-    M = E - e*np.sin(E)
-    
-    return a, e, inc, asc_node, omega, M
-
-def cart2kepX(X, Y, Z, vx, vy, vz, m1, m2):
-    """
     Convert an array of cartesian positions and velocities
     (in heliocentric coordinates) to an array of kepler orbital
     elements. Units are such that G=1. This function is
@@ -244,7 +167,7 @@ def orb_params(snap):
     m2 = pl['mass']
 
     pl['a'], pl['e'], pl['inc'], pl['asc_node'], pl['omega'], pl['M'] \
-        = cart2kepX(x_h[:,0], x_h[:,1], x_h[:,2], v_h[:,0], v_h[:,1], v_h[:,2], m1, m2)
+        = cart2kep(x_h[:,0], x_h[:,1], x_h[:,2], v_h[:,0], v_h[:,1], v_h[:,2], m1, m2)
     
     return pl
 
