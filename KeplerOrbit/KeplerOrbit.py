@@ -2,13 +2,11 @@ import numpy as np
 from scipy import integrate
 from .MathHelpers import cross, dot, nr, PQW
 
-G = 6.6759e-8 # cgs units
-
 def cart2kep(X, Y, Z, vx, vy, vz, m1, m2):
     """
     Convert a single set of cartesian positions and velocities
-    (in heliocentric coordinates) to kepler orbital elements. This
-    function expects CGS units.
+    (in heliocentric coordinates) to kepler orbital elements. Units
+    are such that G=1.
     
     Parameters
     ----------
@@ -39,7 +37,7 @@ def cart2kep(X, Y, Z, vx, vy, vz, m1, m2):
     
     r = np.array([X, Y, Z])
     v = np.array([vx, vy, vz])
-    mu = G*(m1+m2)
+    mu = m1+m2
     magr = np.sqrt(X**2. + Y**2. + Z**2.)
     magv = np.sqrt(vx**2. + vy**2. + vz**2.)
     
@@ -85,7 +83,7 @@ def cart2kepX(X, Y, Z, vx, vy, vz, m1, m2):
     """
     Convert an array of cartesian positions and velocities
     (in heliocentric coordinates) to an array of kepler orbital
-    elements. This function expects CGS units. This function is
+    elements. Units are such that G=1. This function is
     fully vectorized.
 
     Parameters
@@ -102,7 +100,7 @@ def cart2kepX(X, Y, Z, vx, vy, vz, m1, m2):
         y velocity of body
     vz: numpy array of floats
         z velocity of body
-    m1: numpy array of floats
+    m1: float
         mass of central body
     m2: numpy array of floats
         mass of orbiting body
@@ -115,7 +113,7 @@ def cart2kepX(X, Y, Z, vx, vy, vz, m1, m2):
         perihelion and mean anomaly of orbiting body
     """
     
-    mu = G*(m1 + m2)
+    mu = m1 + m2
     magr = np.sqrt(X**2. + Y**2. + Z**2.)
     magv = np.sqrt(vx**2. + vy**2. + vz**2.)
     
@@ -156,7 +154,7 @@ def cart2kepX(X, Y, Z, vx, vy, vz, m1, m2):
 def kep2cart(a, ecc, inc, Omega, omega, M, mass, m_central):
     """
     Convert a single set of kepler orbital elements into cartesian
-    positions and velocities. This function expects CGS units. Note
+    positions and velocities. Units are such that G=1. Note
     that because of the Newton-Raphson function, this routine cannot
     be vectorized.
 
@@ -182,8 +180,8 @@ def kep2cart(a, ecc, inc, Omega, omega, M, mass, m_central):
     Returns
     -------
     float
-        pos, vel - Tuples containing the x, y and z positions
-        and velocities of the body
+        X, Y, Z, vx, vy, vz - Cartesian positions and velocities
+        of the bodies
     """
 
     a = a
@@ -216,10 +214,7 @@ def kep2cart(a, ecc, inc, Omega, omega, M, mass, m_central):
     vy = Vx * Py + Vy * Qy
     vz = Vx * Pz + Vy * Qz
     
-    pos = x, y, z
-    vel = vx, vy, vz
-    
-    return pos, vel
+    return x, y, z, vx, vy, vz
 
 def orb_params(snap):
     """
