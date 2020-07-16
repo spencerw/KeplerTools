@@ -1,3 +1,7 @@
+def test_import():
+    import numpy as np
+    import pynbody as pb
+
 def test_cart2kep2cart():
 	import numpy as np
 	import KeplerOrbit

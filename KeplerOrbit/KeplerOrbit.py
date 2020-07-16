@@ -139,7 +139,7 @@ def kep2cart(a, ecc, inc, Omega, omega, M, mass, m_central):
     
     return x, y, z, vx, vy, vz
 
-def orb_params(snap):
+def orb_params(snap, isHelio=False, mCentral=1.0):
     """
     Takes a Pynbody snapshot of particles and calculates gives them fields
     corresponding to Kepler orbital elements. Assumes that the central star
@@ -150,6 +150,10 @@ def orb_params(snap):
     ----------
     snap: SimArray
         A snapshot of the particles
+    isHelio: boolean
+        Skip frame transformation if the snap is already in heliocentric coordinates
+    mCentral: float
+        Mass of central star in simulation units. Need to provide if no star particle in snap
 
     Returns
     -------
@@ -165,6 +169,12 @@ def orb_params(snap):
     m1 = snap['mass'][0]
     pl = snap[1:]
     m2 = pl['mass']
+
+    if isHelio:
+        x_h = x
+        v_h = v
+        pl = snap
+        m1 = mCentral
 
     pl['a'], pl['e'], pl['inc'], pl['asc_node'], pl['omega'], pl['M'] \
         = cart2kep(x_h[:,0], x_h[:,1], x_h[:,2], v_h[:,0], v_h[:,1], v_h[:,2], m1, m2)

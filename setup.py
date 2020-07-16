@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="KeplerOrbit",
-    version="0.1",
+    version="0.2",
     author="Spencer Wallace",
     author_email="scw7@uw.edu",
     url="https://github.com/spencerw/KeplerOrbit",

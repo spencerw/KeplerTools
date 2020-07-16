@@ -6,7 +6,7 @@ python:
 install:
   - pip install pytest
   - pip install pytest-cov
-  - pip install scipy
+  - pip install numpy==1.16.1
   - pip install pynbody
   - python setup.py develop
 
