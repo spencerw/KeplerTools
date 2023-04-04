@@ -35,55 +35,56 @@ def cart2kep(X, Y, Z, vx, vy, vz, m1, m2):
         inclination, longitude of ascending node, longitude of 
         perihelion and mean anomaly of orbiting body
     """
-    
-    mu = m1 + m2
-    magr = np.sqrt(X**2. + Y**2. + Z**2.)
-    magv = np.sqrt(vx**2. + vy**2. + vz**2.)
-    
-    hx, hy, hz = cross(X, Y, Z, vx, vy, vz)
-    magh = np.sqrt(hx**2. + hy**2. + hz**2.)
-    tmpx, tmpy, tmpz = cross(vx, vy, vz, hx, hy, hz)
-    evecx = tmpx/mu - X/magr
-    evecy = tmpy/mu - Y/magr
-    evecz = tmpz/mu - Z/magr
 
-    e = np.sqrt(evecx**2. + evecy**2. + evecz**2.)
-    
-    a = dot(hx, hy, hz, hx, hy, hz) / (mu * (1. - e**2.))
-    
+    mu = m1 + m2
+    magr = np.sqrt(X ** 2. + Y ** 2. + Z ** 2.)
+    magv = np.sqrt(vx ** 2. + vy ** 2. + vz ** 2.)
+
+    hx, hy, hz = cross(X, Y, Z, vx, vy, vz)
+    magh = np.sqrt(hx ** 2. + hy ** 2. + hz ** 2.)
+    tmpx, tmpy, tmpz = cross(vx, vy, vz, hx, hy, hz)
+    evecx = tmpx / mu - X / magr
+    evecy = tmpy / mu - Y / magr
+    evecz = tmpz / mu - Z / magr
+
+    e = np.sqrt(evecx ** 2. + evecy ** 2. + evecz ** 2.)
+
+    a = dot(hx, hy, hz, hx, hy, hz) / (mu * (1. - e ** 2.))
+
     ivec = [1., 0., 0.]
     jvec = [0., 1., 0.]
     kvec = [0., 0., 1.]
-    
+
     inc = np.arccos(dot(kvec[0], kvec[1], kvec[2], hx, hy, hz) / magh)
-    
+
     nx, ny, nz = cross(kvec[0], kvec[1], kvec[2], hx, hy, hz)
-    nmag = np.sqrt(nx**2. + ny**2. + nz**2.)
+    nmag = np.sqrt(nx ** 2. + ny ** 2. + nz ** 2.)
     asc_node = np.where(inc == 0., 0., np.arccos(dot(ivec[0], ivec[1], ivec[2], nx, ny, nz) / nmag))
-    asc_node[dot(nx, ny, nz, jvec[0], jvec[1], jvec[2]) < 0.] = 2.*np.pi - asc_node[dot(nx, ny, nz, jvec[0], jvec[1], jvec[2]) < 0.]
+    asc_node[dot(nx, ny, nz, jvec[0], jvec[1], jvec[2]) < 0.] = 2. * np.pi - asc_node[
+        dot(nx, ny, nz, jvec[0], jvec[1], jvec[2]) < 0.]
 
-    omega = np.where(inc == 0., np.arctan2(evecy/e, evecx/e), np.arccos(dot(nx, ny, nz, evecx, evecy, evecz) / (nmag*e)))
-    omega[dot(evecx, evecy, evecz, kvec[0], kvec[1], kvec[2]) < 0.] = 2.*np.pi - omega[dot(evecx, evecy, evecz, kvec[0], kvec[1], kvec[2]) < 0.]
-    
+    omega = np.where(inc == 0., np.arctan2(evecy / e, evecx / e),
+                     np.arccos(dot(nx, ny, nz, evecx, evecy, evecz) / (nmag * e)))
+    omega[dot(evecx, evecy, evecz, kvec[0], kvec[1], kvec[2]) < 0.] = 2. * np.pi - omega[
+        dot(evecx, evecy, evecz, kvec[0], kvec[1], kvec[2]) < 0.]
+
     theta = np.arccos(dot(evecx, evecy, evecz, X, Y, Z) / (e * magr))
-    theta = np.where(dot(X, Y, Z, vx, vy, vz) < 0., 2*np.pi - theta, theta)
-                     
-    E = np.arccos((e + np.cos(theta)) / (1 + e * np.cos(theta)))
-    E = np.where(np.logical_and(theta > np.pi, theta < 2*np.pi), 2*np.pi - E, theta)
-    M = E - e*np.sin(E)
-    
-    return a, e, inc, asc_node % (2*np.pi), omega, M
+    theta = np.where(dot(X, Y, Z, vx, vy, vz) < 0., 2 * np.pi - theta, theta)
 
-def kep2cart(a, ecc, inc, Omega, omega, M, mass, m_central):
+    E = np.arccos((e + np.cos(theta)) / (1 + e * np.cos(theta)))
+    E = np.where(np.logical_and(theta > np.pi, theta < 2 * np.pi), 2 * np.pi - E, theta)
+    M = E - e * np.sin(E)
+
+    return a, e, inc, asc_node % (2 * np.pi), omega, M
+
+def kep2cart(sma, ecc, inc, Omega, omega, M, mass, m_central):
     """
     Convert a single set of kepler orbital elements into cartesian
-    positions and velocities. Units are such that G=1. Note
-    that because of the Newton-Raphson function, this routine cannot
-    be vectorized.
+    positions and velocities. Units are such that G=1.
 
     Parameters
     ----------
-    a: float
+    sma: float
         semi-major axis body
     ecc: float
         eccentricity of body
@@ -107,23 +108,19 @@ def kep2cart(a, ecc, inc, Omega, omega, M, mass, m_central):
         of the bodies
     """
 
-    a = a
-    mass = mass
-    m_central = m_central
-
     if inc == 0.:
         Omega = 0.
     if ecc == 0.:
         omega = 0.
     E = nr(M, ecc)
     
-    X = a * (np.cos(E) - ecc)
-    Y = a * np.sqrt(1. - ecc**2.) * np.sin(E)
+    X = sma * (np.cos(E) - ecc)
+    Y = sma * np.sqrt(1. - ecc**2.) * np.sin(E)
     mu = m_central + mass
-    n = np.sqrt(mu / a**3.)
+    n = np.sqrt(mu / sma**3.)
     Edot = n / (1. - ecc * np.cos(E))
-    Vx = - a * np.sin(E) * Edot
-    Vy = a * np.sqrt(1. - ecc**2.) * Edot * np.cos(E)
+    Vx = - sma * np.sin(E) * Edot
+    Vy = sma * np.sqrt(1. - ecc**2.) * Edot * np.cos(E)
     
     Px, Py, Pz, Qx, Qy, Qz = PQW(Omega, omega, inc)
 
@@ -162,13 +159,13 @@ def orb_params(snap, isHelio=False, mCentral=1.0):
         'omega' and 'M' added.
     """
 
-    x = snap.d['pos']
+    x = np.array(snap.d['pos'])
     x_h = x[1:] - x[0]
-    v = snap.d['vel']
+    v = np.array(snap.d['vel'])
     v_h = v[1:] - v[0]
-    m1 = snap['mass'][0]
+    m1 = np.array(snap['mass'][0])
     pl = snap[1:]
-    m2 = pl['mass']
+    m2 = np.array(pl['mass'])
 
     if isHelio:
         x_h = x

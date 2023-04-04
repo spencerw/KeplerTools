@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import optimize
 
 # Vectorized cross and dot product functions
 def cross(x1,y1,z1,x2,y2,z2):
@@ -9,6 +10,12 @@ def cross(x1,y1,z1,x2,y2,z2):
 
 def dot(x1,y1,z1,x2,y2,z2):
     return x1*x2+y1*y2+z1*z2
+
+def nr(M, ecc):
+    def kep(E, M, ecc):
+        return E - (ecc*np.sin(E)) - M
+
+    return optimize.newton(kep, np.ones(len(M)), args=(M, ecc))
 
 def nr(M, ecc, epsilon_target=1.0e-5):
     """
