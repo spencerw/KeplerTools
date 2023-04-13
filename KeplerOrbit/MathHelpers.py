@@ -15,7 +15,10 @@ def nr(M, ecc):
     def kep(E, M, ecc):
         return E - (ecc*np.sin(E)) - M
 
-    return optimize.newton(kep, np.ones(len(M)), args=(M, ecc))
+    if isinstance(M, list):
+        return optimize.newton(kep, np.ones(len(M)), args=(M, ecc))
+    else:
+        return optimize.newton(kep, 1.0, args=(M, ecc))
 
 def PQW(Omega, omega, inc):
     """
