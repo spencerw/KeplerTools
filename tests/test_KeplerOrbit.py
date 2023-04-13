@@ -1,11 +1,6 @@
-def test_import():
-    import numpy as np
-    import pynbody as pb
-
+import numpy as np
+import KeplerOrbit
 def test_cart2kep2cart():
-	import numpy as np
-	import KeplerOrbit
-
 	tol = 1e-10
 
 	# Earth orbiting Sun, slightly inclined so angles are defined
