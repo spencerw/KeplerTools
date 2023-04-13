@@ -17,36 +17,6 @@ def nr(M, ecc):
 
     return optimize.newton(kep, np.ones(len(M)), args=(M, ecc))
 
-def nr(M, ecc, epsilon_target=1.0e-5):
-    """
-    Newton-Raphson Iteration.
-    Computes Eccentric/Hyperbolic Anomaly from Mean Anomaly.
-    Cf. Slide 13/26
-    http://mmae.iit.edu/~mpeet/Classes/MMAE441/Spacecraft/441Lecture17.pdf
-    """
-
-    Ei = M; ii = 1
-    # print "Running Newton-Raphson for M=%.2e, e=%.2f" % ( M, ecc )
-    while True:
-        # Eccentric Anomaly
-        if ecc < 1.0:
-            Ei1 = Ei - \
-                ( Ei - ecc * np.sin(Ei) - M ) / (  1.0 - ecc * np.cos(Ei)  )
-        # Hyperbolic Anomaly
-        elif ecc > 1.0:
-            Ei1 = Ei + \
-                ( M - ecc * np.sinh(Ei) + Ei ) / ( ecc * np.cosh(Ei) - 1.0 )
-        epsilon = np.abs(Ei1 - Ei)
-        Ei = Ei1
-        # print "Iteration %i, Residual %.2e" % ( ii, epsilon )
-        if epsilon < epsilon_target:
-            break
-        if ii > 100:
-            raise Exception("NR Iteration Failed To Converge.")
-        ii += 1
-    # print "Found E=%.2f" % Ei1
-    return Ei1
-
 def PQW(Omega, omega, inc):
     """
     Rotation Matrix Components (Orbit Frame => Inertial Frame)
